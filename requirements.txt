@@ -1,0 +1,3 @@
+# 这里写依赖包，比如
+# milvus
+# sentence-transformers
