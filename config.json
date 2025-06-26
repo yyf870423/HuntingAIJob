@@ -1,5 +1,5 @@
 {
-  "OPENAI_API_KEY": "",
+  "OPENAI_API_KEY": "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",
   "EMBEDDING_MODEL": "text-embedding-ada-002",
   "CANDIDATE_DB_PATH": "data/candidates.db",
   "VECTOR_INDEX_PATH": "data/candidate_vectors.index",
