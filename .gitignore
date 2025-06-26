@@ -79,4 +79,7 @@ Desktop.ini
 
 # Other
 *.bak
-*.tmp 
+*.tmp
+
+# Config
+config.json 
