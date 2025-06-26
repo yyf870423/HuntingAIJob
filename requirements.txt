@@ -2,4 +2,5 @@ gradio
 openai
 faiss-cpu
 pandas
-sqlite3 
+openpyxl
+chromadb
