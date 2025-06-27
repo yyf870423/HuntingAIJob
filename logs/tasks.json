@@ -1,0 +1,40 @@
+{
+  "1e75424e-0f2f-4a9a-ad23-ba8669a7ee35": {
+    "status": "finished",
+    "file": "C:\\Users\\Yifan Yu\\AppData\\Local\\Temp\\gradio\\8fb7b93f71e7a557e67b439aebe02007648bb3e71180bb4bc2d6cd75c9e6c0b1\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751018022.748456,
+    "result": "导入完成，共20条",
+    "end_time": 1751018267.706716
+  },
+  "41b62336-d6c7-4a7e-a8c8-d0e8e1a1d6bb": {
+    "status": "running",
+    "file": "C:\\Users\\Yifan Yu\\AppData\\Local\\Temp\\gradio\\8fb7b93f71e7a557e67b439aebe02007648bb3e71180bb4bc2d6cd75c9e6c0b1\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751018309.3083556
+  },
+  "0be67feb-5fc3-4919-86cd-89b6e87ff47d": {
+    "status": "failed",
+    "file": "..\\data\\uploads\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751018463.939692,
+    "end_time": 1751018463.9416924,
+    "result": "失败: [Errno 2] No such file or directory: '..\\\\data\\\\uploads\\\\upload-test.xlsx'"
+  },
+  "64258a35-1c84-4c84-801e-258798b290b5": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751018573.670089,
+    "result": "导入完成，共20条",
+    "end_time": 1751018849.507795
+  },
+  "88287b75-ebfd-4317-857e-d218c9d05365": {
+    "status": "cancelled",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\upload-test.xlsx",
+    "cancel": true,
+    "start_time": 1751019011.7927115,
+    "result": "任务已取消",
+    "end_time": 1751019072.6736894
+  }
+}

@@ -9,6 +9,10 @@ from app.resume_parser import parse_resume
 from app.vector_store import add_candidate
 import gradio as gradio_mod
 from app.batch_import import parse_excel_file
+from app.single_import import single_import
+from app.batch_import_async import start_batch_import, get_all_tasks, cancel_task
+import shutil
+import os
 
 # 省市二级列表（示例，实际可补充更多）
 PROVINCES_CITIES = {
@@ -109,65 +113,21 @@ def build_ui():
                 )
                 status_md = gr.Markdown(visible=False)
                 parse_btn = gr.Button("开始解析")
-                def make_candidate_id(item):
-                    # 与批量导入一致
-                    keys = ["姓名", "行业", "学校", "专业"]
-                    return "_".join([str(item.get(f, "")).strip() for f in keys])
                 def single_upload_logic(mode, *args):
-                    # args: 所有textbox, textarea, batch_upload
                     if mode != "单个上传":
                         return "请切换到单个上传模式。", *args
-                    # 校验必填
                     values = args[:len(single_inputs)]
                     resume_val = args[len(single_inputs)]
                     province_val = args[len(single_inputs)+1]
                     city_val = args[len(single_inputs)+2]
-                    field_labels = [f.label for f in single_inputs]
-                    required_labels = ["姓名", "行业", "性别"]
-                    for raw_label in required_labels:
-                        idx = [i for i, f in enumerate(single_fields) if f[2] == raw_label][0]
-                        if not values[idx].strip():
-                            return f"<span style='color:red'>{raw_label}为必填项，请填写后再提交。</span>", *args
-                    if not resume_val or not resume_val.strip():
-                        return "<span style='color:red'>简历/经历为必填项，请填写后再提交。</span>", *args
-                    # 组装元数据
                     meta_keys = [f[2] for f in single_fields]
                     metadata = {k: v for k, v in zip(meta_keys, values)}
-                    # 位置字段用城市选择结果
                     metadata["位置"] = city_val if city_val and city_val != "请选择城市" else ""
-                    logger.info(f"[单个上传] 元数据: {metadata}")
-                    # 解析经历
+                    metadata["经历"] = resume_val
                     try:
-                        parsed_exp = parse_resume(resume_val)
-                        logger.info(f"[单个上传] 结构化经历: {parsed_exp}")
+                        op_type, candidate_id = single_import(metadata)
                     except Exception as e:
-                        logger.error(f"经历解析失败: {e}")
-                        return f"<span style='color:red'>经历解析失败: {e}</span>", *args
-                    # 向量化经历
-                    try:
-                        embedding = get_embedding_from_llm(parsed_exp)
-                    except Exception as e:
-                        logger.error(f"经历向量化失败: {e}")
-                        return f"<span style='color:red'>经历向量化失败: {e}</span>", *args
-                    # 组装 candidate_id
-                    item = {k: v for k, v in zip(meta_keys, values)}
-                    item["位置"] = metadata["位置"]
-                    candidate_id = make_candidate_id(item)
-                    logger.info(f"[单个上传] candidate_id: {candidate_id}")
-                    # 检查是插入还是更新
-                    existing = collection.get(ids=[candidate_id])
-                    if existing["ids"] and candidate_id in existing["ids"]:
-                        op_type = "更新"
-                    else:
-                        op_type = "插入"
-                    # 写入 Chroma
-                    try:
-                        add_candidate(candidate_id, embedding, {**metadata, "经历": parsed_exp})
-                        logger.info(f"[单个上传] 已写入 Chroma: {candidate_id}")
-                    except Exception as e:
-                        logger.error(f"写入 Chroma 失败: {e}")
-                        return f"<span style='color:red'>写入 Chroma 失败: {e}</span>", *args
-                    # 清空所有输入
+                        return f"<span style='color:red'>上传失败: {e}</span>", *args
                     clear_vals = []
                     for comp in single_inputs:
                         if isinstance(comp, gr.Number):
@@ -188,12 +148,16 @@ def build_ui():
                     file_obj = args[-1]
                     if file_obj is None:
                         return "<span style='color:red'>请上传xlsx文件！</span>", *args
-                    try:
-                        # 处理整个文件，不限制条数
-                        count = parse_excel_file(file_obj.name, n=None)
-                        return f"<span style='color:green'>批量导入完成，共导入{count}条数据！</span>", *args
-                    except Exception as e:
-                        return f"<span style='color:red'>批量导入失败: {e}</span>", *args
+                    # 保存到自定义目录 data/uploads
+                    save_dir = os.path.join(os.path.dirname(__file__), '../data/uploads')
+                    os.makedirs(save_dir, exist_ok=True)
+                    filename = os.path.basename(file_obj.name)
+                    new_path = os.path.abspath(os.path.join(save_dir, filename))
+                    shutil.copy(file_obj.name, new_path)
+                    # 直接用绝对路径传递
+                    task_id = start_batch_import(new_path)
+                    return f"<span style='color:green'>任务已开始执行，任务ID: {task_id}。请前往'批量任务管理'Tab查看进度。</span>", *args[:-1] + (None,)
+
                 # 绑定批量上传逻辑
                 parse_btn.click(
                     batch_upload_logic,
@@ -228,13 +192,14 @@ def build_ui():
                         province = gr.Dropdown(
                             choices=province_options,
                             label="省份",
-                            value="全部",
+                            value="请选择省份",
+                            allow_custom_value=True,
                             interactive=True
                         )
                         city = gr.Dropdown(
                             choices=["全部"],
                             label="城市",
-                            value="全部",
+                            value="请选择城市",
                             allow_custom_value=True,
                             interactive=True
                         )
@@ -291,13 +256,11 @@ def build_ui():
 
                     def do_match(industry_val, degree_val, province_val, city_val, jd_val, similarity_val, topk_val):
                         logger.info(f"[UI] 开始匹配: 行业={industry_val}, 学历={degree_val}, 省份={province_val}, 城市={city_val}, JD={jd_val[:30]}..., 相似度={similarity_val}, top_k={topk_val}")
-                        print(f"[UI] 开始匹配: 行业={industry_val}, 学历={degree_val}, 省份={province_val}, 城市={city_val}, JD={jd_val[:30]}..., 相似度={similarity_val}, top_k={topk_val}")
                         t0 = time.time()
                         # 1. 解析JD
                         try:
                             jd_struct = parse_jd(jd_val)
                             logger.info(f"[JD解析] 结构化结果: {jd_struct}")
-                            print(f"[JD解析] 结构化结果: {jd_struct}")
                         except Exception as e:
                             logger.error(f"JD解析失败: {e}")
                             return "JD解析失败，请检查输入。"
@@ -316,7 +279,6 @@ def build_ui():
                         if city_val and city_val != "全部":
                             where["位置"] = city_val
                         logger.info(f"[检索] where条件: {where}")
-                        print(f"[检索] where条件: {where}")
                         # 4. 检索
                         try:
                             if where:
@@ -328,7 +290,6 @@ def build_ui():
                             return "候选人检索失败，请检查后端服务。"
                         metadatas = result.get('metadatas', [[]])[0]
                         logger.info(f"[检索] 返回候选人数: {len(metadatas)}")
-                        print(f"[检索] 返回候选人数: {len(metadatas)}")
                         # 5. 格式化为HTML表格，部分列nowrap
                         headers = ["姓名", "行业", "类别", "在职公司", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱"]
                         nowrap_cols = {"姓名", "行业", "位置", "手机号", "邮箱", "学历"}
