@@ -35,4 +35,13 @@ if __name__ == "__main__":
     * 熟悉大模型推理引擎（如DeepSpeed、vllm和sglang等）的源码和优化策略。
 '''
     result = parse_jd(jd_text)
-    print(result) 
+    print("\n【JD结构化解析结果】")
+    print(result)
+
+    # 新增：用 JD 作为检索 query，查找匹配候选人
+    from app.vector_store import get_embedding_from_llm, query_candidates
+    print("\n【Chroma 向量检索：JD 匹配候选人 Top 3】")
+    jd_emb = get_embedding_from_llm(jd_text)
+    search_result = query_candidates(jd_emb, n_results=3)
+    for i, (cid, meta, dist) in enumerate(zip(search_result['ids'][0], search_result['metadatas'][0], search_result['distances'][0]), 1):
+        print(f"Top {i} | id: {cid} | 距离: {dist:.4f} | 元数据: {meta}") 

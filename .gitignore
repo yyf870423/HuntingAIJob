@@ -82,4 +82,7 @@ Desktop.ini
 *.tmp
 
 # Config
-config.json 
+config.json
+
+# Store
+store/chroma_db/ 

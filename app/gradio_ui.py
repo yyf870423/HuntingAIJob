@@ -1,7 +1,127 @@
 import gradio as gr
+from app.vector_store import collection
+
+# 省市二级列表（示例，实际可补充更多）
+PROVINCES_CITIES = {
+    "北京": ["北京"],
+    "上海": ["上海"],
+    "广东": ["广州", "深圳", "珠海", "佛山"],
+    "江苏": ["南京", "苏州", "无锡", "常州"],
+    "浙江": ["杭州", "宁波", "温州"],
+    "四川": ["成都", "绵阳"],
+    "重庆": ["重庆"],
+    "山东": ["济南", "青岛"],
+    "湖北": ["武汉"],
+    "湖南": ["长沙"],
+    # ... 可补充更多
+}
+
+# 学历选项
+DEGREE_OPTIONS = ["本科及以上", "硕士及以上", "博士"]
+
+# 获取行业选项（从Chroma数据库元数据中去重获取"行业"字段）
+def get_industry_options():
+    # 获取所有元数据
+    all_metas = collection.get()["metadatas"]
+    industries = set()
+    for meta in all_metas:
+        if meta and "行业" in meta and meta["行业"]:
+            industries.add(meta["行业"])
+    return sorted(list(industries))
+
 
 def build_ui():
     with gr.Blocks() as demo:
-        gr.Markdown("# HuntingAIJob 智能人才匹配系统")
-        # 这里可以添加更多UI组件
+        gr.Markdown("## 智能人才匹配系统")
+        with gr.Tab("上传简历"):
+            # 这里后续添加上传简历的内容
+            pass
+        with gr.Tab("搜索候选人"):
+            with gr.Row():
+                # 左侧：筛选条件、岗位描述、结果控制
+                with gr.Column(scale=1):
+                    gr.Markdown("### 筛选条件")
+                    # 第一行：行业、学历
+                    with gr.Row():
+                        industry_options = get_industry_options()
+                        industry_options = ["全部"] + industry_options
+                        industry = gr.Dropdown(
+                            choices=industry_options,
+                            label="行业",
+                            value="全部",
+                            interactive=True
+                        )
+                        degree_options = ["全部"] + DEGREE_OPTIONS
+                        degree = gr.Dropdown(
+                            choices=degree_options,
+                            label="学历",
+                            value="全部",
+                            interactive=True
+                        )
+                    # 第二行：省份、城市
+                    with gr.Row():
+                        province_options = ["全部"] + list(PROVINCES_CITIES.keys())
+                        province = gr.Dropdown(
+                            choices=province_options,
+                            label="省份",
+                            value="全部",
+                            interactive=True
+                        )
+                        city = gr.Dropdown(
+                            choices=["全部"],
+                            label="城市（请选择）",
+                            value="全部",
+                            allow_custom_value=True,
+                            interactive=True
+                        )
+
+                    def update_cities(selected_province):
+                        if selected_province and selected_province != "全部" and selected_province in PROVINCES_CITIES:
+                            city_choices = ["全部"] + [str(city) for city in PROVINCES_CITIES[selected_province]]
+                        else:
+                            city_choices = ["全部"]
+                        return gr.Dropdown(
+                            choices=city_choices,
+                            value="全部",
+                            label="城市（请选择）",
+                            allow_custom_value=True,
+                            interactive=True
+                        )
+                    province.change(update_cities, inputs=province, outputs=city)
+
+                    gr.Markdown("### 岗位描述")
+                    jd_text = gr.TextArea(
+                        label="请输入岗位JD描述（必填）",
+                        placeholder="请粘贴或输入岗位描述...",
+                        lines=8,
+                        max_lines=35,
+                        interactive=True
+                    )
+
+                    gr.Markdown("### 结果控制")
+                    with gr.Column():
+                        similarity = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.2,
+                            step=0.01,
+                            label="相似度"
+                        )
+                        top_k = gr.Slider(
+                            minimum=1,
+                            maximum=100,
+                            value=30,
+                            step=1,
+                            label="返回 Top 数量"
+                        )
+                    # 这里可添加搜索按钮等
+                    gr.Button("开始匹配")
+
+                # 右侧：候选人列表展示
+                with gr.Column(scale=1):
+                    candidates_md = gr.Markdown(
+                        value="",  # 默认不显示内容
+                        visible=False,  # 默认隐藏
+                        label="筛选结果"
+                    )
     return demo 

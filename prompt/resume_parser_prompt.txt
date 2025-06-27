@@ -43,27 +43,21 @@ Given an unstructured resume or free-form description of a candidate's work expe
 - Omit sections not relevant to JD matching, such as education, location, languages, or contact info.
 - If information is missing or unclear, leave that section empty but preserve the heading.
 
-### Example Input
+### 工作经历
 
-Worked at ByteDance as a backend engineer from 2021 to now. I helped speed up large model inference. I know how to use CUDA, Python, and worked with DeepSpeed and MOE models...
+字节跳动 | 后端工程师 | 2021 – 至今  
+- 使用 CUDA 和 NCCL 优化基于 MOE 的大模型推理性能  
+- 定制化 DeepSpeed 推理引擎以支持生产部署  
+- 负责分布式 GPU 的内存优化与专家调度策略设计
 
-### Example Output
-
-### Work Experience
-
-ByteDance | Backend Engineer | 2021 – Present  
-- Optimized MOE-based large model inference using CUDA and NCCL  
-- Customized DeepSpeed inference engine for production deployment  
-- Worked on memory optimization and expert scheduling across distributed GPUs
-
-### Skills
+### 技能
 - Python, C++, CUDA, DeepSpeed, MOE, NCCL, TensorFlow
 
-### Projects
-**MOE Inference Optimization**  
-- Designed expert routing mechanism to improve inference throughput  
-- Implemented custom CUDA kernel to accelerate expert dispatch  
-- Reduced latency by 25% vs. baseline vLLM solution
+### 项目
+**MOE 推理优化**  
+- 设计专家路由机制以提升推理吞吐率  
+- 实现自定义 CUDA 内核，加速专家调度过程  
+- 相较于基准 vLLM 方案，延迟降低约 25%
 
-### Keywords
-MOE, CUDA, DeepSpeed, Expert Routing, Inference Engine, Distributed Optimization
+### 关键词
+MOE, CUDA, DeepSpeed, 专家路由, 推理引擎, 分布式优化
