@@ -1,11 +1,7 @@
 {
   "OPENAI_API_KEY": "",
   "EMBEDDING_MODEL": "text-embedding-ada-002",
-  "CANDIDATE_DB_PATH": "data/candidates.db",
-  "VECTOR_INDEX_PATH": "data/candidate_vectors.index",
   "UPLOAD_DIR": "data/uploads/",
-  "TOP_N": 5,
-  "MATCH_THRESHOLD": 0.7,
   "import_fields": [
     "姓名", "行业", "类别", "在职公司", "现岗位", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱"
   ],

@@ -36,5 +36,13 @@
     "start_time": 1751019011.7927115,
     "result": "任务已取消",
     "end_time": 1751019072.6736894
+  },
+  "78d13052-1590-462b-a5d6-69c226c9c33e": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751023736.059411,
+    "result": "导入完成，共20条",
+    "end_time": 1751023987.2769866
   }
 }

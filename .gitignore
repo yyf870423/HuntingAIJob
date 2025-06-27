@@ -71,11 +71,14 @@ Desktop.ini
 
 # Logs
 *.log
+logs/tasks.json
+logs/hunting_ai_job.log
 
 # Data
 /data/candidate_vectors.index
 /data/candidates.db
 /data/uploads/
+data/data_source.xlsx
 
 # Other
 *.bak
