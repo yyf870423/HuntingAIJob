@@ -4,6 +4,11 @@ import time
 from app.jd_parser import parse_jd
 from app.vector_store import get_embedding_from_llm, query_candidates
 from app.logger import logger
+from gradio import Warning
+from app.resume_parser import parse_resume
+from app.vector_store import add_candidate
+import gradio as gradio_mod
+from app.batch_import import parse_excel_file
 
 # 省市二级列表（示例，实际可补充更多）
 PROVINCES_CITIES = {
@@ -38,8 +43,163 @@ def build_ui():
     with gr.Blocks() as demo:
         gr.Markdown("## 智能人才匹配系统")
         with gr.Tab("上传简历"):
-            # 这里后续添加上传简历的内容
-            pass
+            with gr.Column():
+                upload_mode_radio = gr.Radio(
+                    choices=["单个上传", "批量上传"],
+                    value="单个上传",
+                    label="上传方式"
+                )
+                # 单个上传模式下的表单字段
+                single_fields = [
+                    ("姓名（必填）", "", "姓名"), ("性别（必填）", "", "性别"), ("行业（必填）", "", "行业"), ("年龄", "", "年龄"), ("类别", "", "类别"), ("在职公司", "", "在职公司"), ("现岗位", "", "现岗位"),
+                    ("学历", "", "学历"), ("学校", "", "学校"), ("专业", "", "专业"), ("手机号", "", "手机号"), ("邮箱", "", "邮箱")
+                ]
+                single_inputs = []
+                # 第一行：姓名、性别、行业、年龄、类别、在职公司、现岗位
+                with gr.Row():
+                    for idx, (label, default, raw_label) in enumerate(single_fields[:7]):
+                        if raw_label == "性别":
+                            tb = gr.Dropdown(label=label, choices=["男", "女"], value=None, visible=True)
+                        elif raw_label == "年龄":
+                            tb = gr.Number(label=label, value=None, minimum=0, precision=0, visible=True)
+                        else:
+                            tb = gr.Textbox(label=label, value=default, visible=True)
+                        single_inputs.append(tb)
+                # 第二行：学历、学校、专业、手机号、邮箱、省份、城市
+                with gr.Row():
+                    # 学历
+                    tb = gr.Dropdown(label=single_fields[7][0], choices=["本科", "硕士", "博士"], value=None, visible=True)
+                    single_inputs.append(tb)
+                    # 学校、专业、手机号
+                    for label, default, raw_label in single_fields[8:11]:
+                        tb = gr.Textbox(label=label, value=default, visible=True)
+                        single_inputs.append(tb)
+                    # 邮箱
+                    email_box = gr.Textbox(label=single_fields[11][0], value=single_fields[11][1], visible=True)
+                    single_inputs.append(email_box)
+                    # 省份、城市
+                    province_options = ["请选择省份"] + list(PROVINCES_CITIES.keys())
+                    province_box = gr.Dropdown(label="省份", choices=province_options, value="请选择省份", visible=True)
+                    city_box = gr.Dropdown(label="城市", choices=["请选择城市"], value="请选择城市", visible=True)
+                # 省份-城市联动逻辑，参照"搜索候选人"tab
+                def update_cities(selected_province):
+                    if selected_province and selected_province != "请选择省份" and selected_province in PROVINCES_CITIES:
+                        city_choices = ["请选择城市"] + [str(city) for city in PROVINCES_CITIES[selected_province]]
+                    else:
+                        city_choices = ["请选择城市"]
+                    return gr.Dropdown(choices=city_choices, value="请选择城市", label="城市", interactive=True)
+                province_box.change(update_cities, inputs=province_box, outputs=city_box)
+                resume_text = gr.TextArea(label="简历/经历", lines=8, max_lines=15, visible=True)
+                # 批量上传模式下的 xlsx 文件上传
+                batch_upload = gr.File(
+                    label="上传文件",
+                    file_types=[".xlsx"],
+                    visible=False,
+                    interactive=True
+                )
+                def show_upload_mode(selected_mode):
+                    if selected_mode == "单个上传":
+                        return [gr.update(visible=True)] * (len(single_inputs) + 1) + [gr.update(visible=True)] * 2 + [gr.update(visible=False)]
+                    else:
+                        return [gr.update(visible=False)] * (len(single_inputs) + 1) + [gr.update(visible=False)] * 2 + [gr.update(visible=True)]
+                upload_mode_radio.change(
+                    show_upload_mode,
+                    inputs=upload_mode_radio,
+                    outputs=single_inputs + [resume_text, province_box, city_box, batch_upload]
+                )
+                status_md = gr.Markdown(visible=False)
+                parse_btn = gr.Button("开始解析")
+                def make_candidate_id(item):
+                    # 与批量导入一致
+                    keys = ["姓名", "行业", "学校", "专业"]
+                    return "_".join([str(item.get(f, "")).strip() for f in keys])
+                def single_upload_logic(mode, *args):
+                    # args: 所有textbox, textarea, batch_upload
+                    if mode != "单个上传":
+                        return "请切换到单个上传模式。", *args
+                    # 校验必填
+                    values = args[:len(single_inputs)]
+                    resume_val = args[len(single_inputs)]
+                    province_val = args[len(single_inputs)+1]
+                    city_val = args[len(single_inputs)+2]
+                    field_labels = [f.label for f in single_inputs]
+                    required_labels = ["姓名", "行业", "性别"]
+                    for raw_label in required_labels:
+                        idx = [i for i, f in enumerate(single_fields) if f[2] == raw_label][0]
+                        if not values[idx].strip():
+                            return f"<span style='color:red'>{raw_label}为必填项，请填写后再提交。</span>", *args
+                    if not resume_val or not resume_val.strip():
+                        return "<span style='color:red'>简历/经历为必填项，请填写后再提交。</span>", *args
+                    # 组装元数据
+                    meta_keys = [f[2] for f in single_fields]
+                    metadata = {k: v for k, v in zip(meta_keys, values)}
+                    # 位置字段用城市选择结果
+                    metadata["位置"] = city_val if city_val and city_val != "请选择城市" else ""
+                    logger.info(f"[单个上传] 元数据: {metadata}")
+                    # 解析经历
+                    try:
+                        parsed_exp = parse_resume(resume_val)
+                        logger.info(f"[单个上传] 结构化经历: {parsed_exp}")
+                    except Exception as e:
+                        logger.error(f"经历解析失败: {e}")
+                        return f"<span style='color:red'>经历解析失败: {e}</span>", *args
+                    # 向量化经历
+                    try:
+                        embedding = get_embedding_from_llm(parsed_exp)
+                    except Exception as e:
+                        logger.error(f"经历向量化失败: {e}")
+                        return f"<span style='color:red'>经历向量化失败: {e}</span>", *args
+                    # 组装 candidate_id
+                    item = {k: v for k, v in zip(meta_keys, values)}
+                    item["位置"] = metadata["位置"]
+                    candidate_id = make_candidate_id(item)
+                    logger.info(f"[单个上传] candidate_id: {candidate_id}")
+                    # 检查是插入还是更新
+                    existing = collection.get(ids=[candidate_id])
+                    if existing["ids"] and candidate_id in existing["ids"]:
+                        op_type = "更新"
+                    else:
+                        op_type = "插入"
+                    # 写入 Chroma
+                    try:
+                        add_candidate(candidate_id, embedding, {**metadata, "经历": parsed_exp})
+                        logger.info(f"[单个上传] 已写入 Chroma: {candidate_id}")
+                    except Exception as e:
+                        logger.error(f"写入 Chroma 失败: {e}")
+                        return f"<span style='color:red'>写入 Chroma 失败: {e}</span>", *args
+                    # 清空所有输入
+                    clear_vals = []
+                    for comp in single_inputs:
+                        if isinstance(comp, gr.Number):
+                            clear_vals.append(None)
+                        else:
+                            clear_vals.append("")
+                    clear_vals += [""] + ["请选择省份", "请选择城市", None]
+                    return f"<span style='color:green'>{op_type}成功！</span>", *clear_vals
+                # 新的回调：校验+解析+入库+清空
+                parse_btn.click(
+                    single_upload_logic,
+                    inputs=[upload_mode_radio] + single_inputs + [resume_text, province_box, city_box, batch_upload],
+                    outputs=[status_md] + single_inputs + [resume_text, province_box, city_box, batch_upload]
+                )
+                def batch_upload_logic(mode, *args):
+                    if mode != "批量上传":
+                        return "请切换到批量上传模式。", *args
+                    file_obj = args[-1]
+                    if file_obj is None:
+                        return "<span style='color:red'>请上传xlsx文件！</span>", *args
+                    try:
+                        # 处理整个文件，不限制条数
+                        count = parse_excel_file(file_obj.name, n=None)
+                        return f"<span style='color:green'>批量导入完成，共导入{count}条数据！</span>", *args
+                    except Exception as e:
+                        return f"<span style='color:red'>批量导入失败: {e}</span>", *args
+                # 绑定批量上传逻辑
+                parse_btn.click(
+                    batch_upload_logic,
+                    inputs=[upload_mode_radio] + single_inputs + [resume_text, province_box, city_box, batch_upload],
+                    outputs=[status_md] + single_inputs + [resume_text, province_box, city_box, batch_upload]
+                )
         with gr.Tab("搜索候选人"):
             with gr.Row():
                 # 左侧：筛选条件、岗位描述、结果控制
@@ -73,7 +233,7 @@ def build_ui():
                         )
                         city = gr.Dropdown(
                             choices=["全部"],
-                            label="城市（请选择）",
+                            label="城市",
                             value="全部",
                             allow_custom_value=True,
                             interactive=True
