@@ -8,6 +8,7 @@ from app.single_import import single_import
 import pandas as pd
 import numpy as np
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 config = get_config()
 FIELDS = config["import_fields"]
@@ -32,7 +33,7 @@ def parse_excel_row(row):
     result["经历"] = experience_text
     return result
 
-def parse_excel_file(file_path, n=None, task_id=None):
+def parse_excel_file(file_path, n=None, task_id=None, max_workers=32):
     import sys, os
     print("parse_excel_file收到文件路径：", file_path, "存在吗？", os.path.exists(file_path))
     try:
@@ -42,7 +43,10 @@ def parse_excel_file(file_path, n=None, task_id=None):
         raise
     count = 0
     # 动态import避免循环依赖
-    for idx, row in df.iterrows() if n is None else df.head(n).iterrows():
+    items = list(df.iterrows()) if n is None else list(df.head(n).iterrows())
+
+    def import_one(idx_row):
+        idx, row = idx_row
         # 检查是否被取消（文件持久化方式）
         if task_id:
             try:
@@ -50,21 +54,33 @@ def parse_excel_file(file_path, n=None, task_id=None):
                 tasks = load_tasks()
                 if tasks.get(task_id, {}).get("cancel"):
                     print(f"任务{task_id}被取消，中断导入。")
-                    break
+                    return "cancelled"
             except Exception as e:
                 print(f"检查任务取消状态失败: {e}")
         item = parse_excel_row(row)
         if item["姓名"] == "":
             logger.warning(f"第{idx+2}行姓名为空，已跳过该记录。")
-            continue
+            return None
         try:
             op_type, candidate_id = single_import(item)
-            print(f"第{count+1}条（{op_type}）：{candidate_id}")
-            count += 1
+            print(f"第{idx+1}条（{op_type}）：{candidate_id}")
+            return True
         except Exception as e:
             logger.warning(f"第{idx+2}行导入失败: {e}")
             print(f"第{idx+2}行导入失败: {e}")
-            continue
+            return None
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(import_one, idx_row) for idx_row in items]
+        for future in as_completed(futures):
+            result = future.result()
+            if result == "cancelled":
+                # 发现取消，立即终止后续任务
+                for f in futures:
+                    f.cancel()
+                break
+            if result:
+                count += 1
     return count
 
 if __name__ == "__main__":

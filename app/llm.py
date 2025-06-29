@@ -7,7 +7,7 @@ EMBEDDING_MODEL = config.get("EMBEDDING_MODEL", "text-embedding-ada-002")
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-def call_gpt(prompt, model="gpt-4-1106-preview", temperature=0.2, max_tokens=4096):
+def call_gpt(prompt, model="gpt-4o-mini", temperature=0.2, max_tokens=4096):
     """
     通用 GPT 调用，返回大模型生成的文本结果。
     """
