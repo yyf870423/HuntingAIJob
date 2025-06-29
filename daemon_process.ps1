@@ -29,9 +29,12 @@ function Start-RunPy {
             Remove-Item $pidFile -Force
         }
     }
-    if (Test-Path .\venv\Scripts\Activate.ps1) {
-        . .\venv\Scripts\Activate.ps1
+    # 检查并创建虚拟环境
+    if (-not (Test-Path .\venv\Scripts\Activate.ps1)) {
+        Write-Host "Virtual environment not found, creating..." -ForegroundColor Yellow
+        python -m venv venv
     }
+    . .\venv\Scripts\Activate.ps1
     $proc = Start-Process -FilePath python -ArgumentList '.\run.py' -WindowStyle Hidden -PassThru
     Set-Content -Path $pidFile -Value $proc.Id
     Write-Host "run.py started as a daemon process, PID: $($proc.Id), written to $pidFile" -ForegroundColor Green
