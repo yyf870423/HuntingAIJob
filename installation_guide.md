@@ -17,7 +17,19 @@
    Python 3.11.9
    ```
 
-## 2. 在 PowerShell 中运行 daemon_process.ps1
+## 2. 配置 OpenAI API Key
+
+1. 打开项目根目录下的 `config.json` 文件。
+2. 将你的 OpenAI API Key 填入 `OPENAI_API_KEY` 字段。例如：
+   ```json
+   {
+     "OPENAI_API_KEY": "sk-xxxxxx...",
+     // 其他配置项
+   }
+   ```
+3. 保存文件。
+
+## 3. 在 PowerShell 中运行 daemon_process.ps1
 
 1. 打开 PowerShell，进入项目根目录（假设为 `D:\Software\ai_project\HuntingAIJob`）：
    ```powershell
@@ -41,7 +53,7 @@
    .\daemon_process.ps1 help
    ```
 
-## 3. 在 PowerShell 中使用 batch_import_task.ps1
+## 4. 在 PowerShell 中使用 batch_import_task.ps1
 
 1. 进入项目根目录：
    ```powershell
