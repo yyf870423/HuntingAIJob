@@ -42,8 +42,13 @@ def list_tasks():
     print('-'*100)
     for tid, info in tasks.items():
         status = info.get('status', '')
-        start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info.get('start_time',0))) if info.get('start_time') else ''
-        end_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info.get('end_time',0))) if info.get('end_time') else ''
+        def format_time(ts):
+            if not ts:
+                return ''
+            import datetime
+            return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        start_time = format_time(info.get('start_time', 0))
+        end_time = format_time(info.get('end_time', 0))
         result = info.get('result', '')
         print(f"{tid:36}  {status:8}  {start_time:19}  {end_time:19}  {result}")
 

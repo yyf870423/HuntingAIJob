@@ -1,15 +1,22 @@
-from app.llm import call_gpt
+from app.llm import call_gpt, get_embedding_from_llm
 import os
+import json
 
 PROMPT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prompt", "jd_parser_prompt.txt")
 
 def parse_jd(jd_text):
-    """调用 LLM 对 JD 进行结构化解析，返回结构化字段。"""
+    """调用 LLM 对 JD 进行结构化解析，返回结构化字段（dict）。"""
     with open(PROMPT_PATH, "r", encoding="utf-8") as f:
         system_prompt = f.read()
     full_prompt = f"{system_prompt}\n\nJD:\n{jd_text.strip()}"
     result = call_gpt(full_prompt)
-    return result
+    try:
+        jd_struct = json.loads(result)
+    except Exception as e:
+        print("[ERROR] LLM output is not valid JSON!", e)
+        print(result)
+        raise
+    return jd_struct
 
 if __name__ == "__main__":
     jd_text = '''
@@ -34,14 +41,9 @@ if __name__ == "__main__":
     * 有大规模分布式系统开发经验，熟悉Kubernetes、Docker等容器化技术；
     * 熟悉大模型推理引擎（如DeepSpeed、vllm和sglang等）的源码和优化策略。
 '''
-    result = parse_jd(jd_text)
+    jd_struct = parse_jd(jd_text)
     print("\n【JD结构化解析结果】")
-    print(result)
-
-    # 新增：用 JD 作为检索 query，查找匹配候选人
-    from app.vector_store import get_embedding_from_llm, query_candidates
-    print("\n【Chroma 向量检索：JD 匹配候选人 Top 3】")
-    jd_emb = get_embedding_from_llm(jd_text)
-    search_result = query_candidates(jd_emb, n_results=3)
-    for i, (cid, meta, dist) in enumerate(zip(search_result['ids'][0], search_result['metadatas'][0], search_result['distances'][0]), 1):
-        print(f"Top {i} | id: {cid} | 距离: {dist:.4f} | 元数据: {meta}") 
+    # 只展示五个固定维度，防止 LLM 返回多余内容
+    dim_fields = ["technical_skills", "experience", "projects", "academic_background", "bonus_items"]
+    filtered_struct = {k: jd_struct.get(k, None) for k in dim_fields}
+    print(json.dumps(filtered_struct, ensure_ascii=False, indent=2)) 

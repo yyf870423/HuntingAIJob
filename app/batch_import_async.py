@@ -52,8 +52,20 @@ def start_batch_import(file_path):
     t.start()
     return task_id
 
+def format_time(ts):
+    if not ts:
+        return ''
+    import datetime
+    return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
 def get_all_tasks():
     tasks = load_tasks()
+    # 转换时间戳为可读格式
+    for tid, info in tasks.items():
+        if 'start_time' in info:
+            info['start_time'] = format_time(info['start_time'])
+        if 'end_time' in info:
+            info['end_time'] = format_time(info['end_time'])
     return {tid: {k: v for k, v in info.items()} for tid, info in tasks.items()}
 
 def cancel_task(task_id):

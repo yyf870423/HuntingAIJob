@@ -7,12 +7,6 @@
     "result": "导入完成，共20条",
     "end_time": 1751018267.706716
   },
-  "41b62336-d6c7-4a7e-a8c8-d0e8e1a1d6bb": {
-    "status": "running",
-    "file": "C:\\Users\\Yifan Yu\\AppData\\Local\\Temp\\gradio\\8fb7b93f71e7a557e67b439aebe02007648bb3e71180bb4bc2d6cd75c9e6c0b1\\upload-test.xlsx",
-    "cancel": false,
-    "start_time": 1751018309.3083556
-  },
   "0be67feb-5fc3-4919-86cd-89b6e87ff47d": {
     "status": "failed",
     "file": "..\\data\\uploads\\upload-test.xlsx",
@@ -69,12 +63,6 @@
     "result": "导入完成，共786条",
     "end_time": 1751199068.6317215
   },
-  "f83df05a-8dda-4e00-b53e-b7e6d65f24ab": {
-    "status": "running",
-    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\33.xlsx",
-    "cancel": false,
-    "start_time": 1751199963.2795997
-  },
   "4b9e3cde-bdbe-4ef8-a4b1-8773f3c4fe8b": {
     "status": "finished",
     "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\33.xlsx",
@@ -82,5 +70,45 @@
     "start_time": 1751200065.1266816,
     "result": "导入完成，共786条",
     "end_time": 1751200282.199787
+  },
+  "3ac785b0-d843-4550-8fa4-a2e8edc86b11": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751361508.8483572,
+    "result": "导入完成，共20条",
+    "end_time": 1751361522.875312
+  },
+  "be018b86-3b33-4ca2-a52d-1e89dd9fa29d": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\data_source.xlsx",
+    "cancel": false,
+    "start_time": 1751361700.0001924,
+    "result": "导入完成，共763条",
+    "end_time": 1751361884.3621993
+  },
+  "96d7fe3b-8e3b-4243-9c56-bd106c82a23b": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\data_source.xlsx",
+    "cancel": false,
+    "start_time": 1751362302.928308,
+    "result": "导入完成，共759条",
+    "end_time": 1751362475.9524696
+  },
+  "316425c0-c57b-4899-b753-4cab4231e914": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\data_source.xlsx",
+    "cancel": false,
+    "start_time": 1751363185.4658084,
+    "result": "导入完成，共758条",
+    "end_time": 1751363360.7917497
+  },
+  "fa8112aa-7cb9-4656-be12-312420ab619f": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\data_source.xlsx",
+    "cancel": false,
+    "start_time": 1751375273.9118292,
+    "result": "导入完成，共699条",
+    "end_time": 1751375492.8689718
   }
 }
