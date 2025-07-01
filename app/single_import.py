@@ -80,8 +80,11 @@ def single_import(row):
             except Exception:
                 zero_embedding = [0.0] * 768  # 默认 768 维
             ids.append(f"{candidate_id}_{dim}")
+            meta = {}
+            for base_field in config.get("import_fields", []):
+                meta[base_field] = row.get(base_field, "")
+            metadatas.append(meta)
             embeddings.append(zero_embedding)
-            metadatas.append({dim: ""})
             continue
         if isinstance(dim_content, dict) or isinstance(dim_content, list):
             dim_text = json.dumps(dim_content, ensure_ascii=False)
@@ -99,12 +102,18 @@ def single_import(row):
             except Exception:
                 zero_embedding = [0.0] * 768
             ids.append(f"{candidate_id}_{dim}")
+            meta = {}
+            for base_field in config.get("import_fields", []):
+                meta[base_field] = row.get(base_field, "")
+            metadatas.append(meta)
             embeddings.append(zero_embedding)
-            metadatas.append({dim: dim_text})
             continue
         ids.append(f"{candidate_id}_{dim}")
         embeddings.append(embedding)
-        metadatas.append({dim: dim_text})
+        meta = {}
+        for base_field in config.get("import_fields", []):
+            meta[base_field] = row.get(base_field, "")
+        metadatas.append(meta)
     if ids:
         collection.upsert(ids=ids, embeddings=embeddings, metadatas=metadatas)
         for i in ids:

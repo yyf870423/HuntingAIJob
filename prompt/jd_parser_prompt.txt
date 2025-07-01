@@ -65,3 +65,5 @@ Given a JD, extract the following four categories of information in a structured
 **The output MUST be in JSON format.
 **Each field name is fixed and consistent: technical_skills, experience, projects, academic_background, bonus_items.
 **No extra information should be included in the output, only the relevant data for each category.
+**Example Output is in Chinese to demonstrate how the output should look when returned.
+**The actual output should be in Chinese, as per the user's requirements.

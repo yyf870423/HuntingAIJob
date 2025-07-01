@@ -2,7 +2,7 @@ import gradio as gr
 from app.vector_store import collection
 import time
 from app.jd_parser import parse_jd
-from app.vector_store import get_embedding_from_llm, query_candidates
+from app.vector_store import get_embedding_from_llm, query_candidates, multi_vector_query
 from app.logger import logger
 from gradio import Warning
 from app.resume_parser import parse_resume
@@ -56,13 +56,12 @@ DEGREE_OPTIONS = ["本科及以上", "硕士及以上", "博士"]
 
 # 获取行业选项（从Chroma数据库元数据中去重获取"行业"字段）
 def get_industry_options():
-    # 获取所有元数据
     all_metas = collection.get()["metadatas"]
     industries = set()
     for meta in all_metas:
         if meta and "行业" in meta and meta["行业"]:
             industries.add(meta["行业"])
-    return sorted(list(industries))
+    return ["全部"] + sorted(list(industries))
 
 
 def build_ui():
@@ -75,10 +74,8 @@ def build_ui():
                     gr.Markdown("### 筛选条件")
                     # 第一行：行业、学历
                     with gr.Row():
-                        industry_options = get_industry_options()
-                        industry_options = ["全部"] + industry_options
                         industry = gr.Dropdown(
-                            choices=industry_options,
+                            choices=get_industry_options(),
                             label="行业",
                             value="全部",
                             interactive=True
@@ -131,12 +128,20 @@ def build_ui():
                         interactive=True
                     )
 
+                    # 新增权重控制区域
+                    gr.Markdown("### 权重控制")
+                    with gr.Column():
+                        technical_skills_weight = gr.Slider(1, 100, value=60, step=1, label="技术技能 (technical_skills)")
+                        experience_weight = gr.Slider(1, 100, value=10, step=1, label="工作经验 (experience)")
+                        projects_weight = gr.Slider(1, 100, value=20, step=1, label="项目经历 (projects)")
+                        academic_background_weight = gr.Slider(1, 100, value=5, step=1, label="学术背景 (academic_background)")
+                        bonus_items_weight = gr.Slider(1, 100, value=5, step=1, label="加分项 (bonus_items)")
                     gr.Markdown("### 结果控制")
                     with gr.Column():
                         similarity = gr.Slider(
                             minimum=0.0,
                             maximum=1.0,
-                            value=0.75,
+                            value=0.5,
                             step=0.01,
                             label="相似度"
                         )
@@ -158,8 +163,9 @@ def build_ui():
                         label="筛选结果"
                     )
 
-                    def do_match(industry_val, degree_val, province_val, city_val, jd_val, similarity_val, topk_val):
-                        logger.info(f"[UI] 开始匹配: 行业={industry_val}, 学历={degree_val}, 省份={province_val}, 城市={city_val}, JD={jd_val[:30]}..., 相似度={similarity_val}, top_k={topk_val}")
+                    def do_match(industry_val, degree_val, province_val, city_val, jd_val, similarity_val, topk_val,
+                                technical_skills_w, experience_w, projects_w, academic_background_w, bonus_items_w):
+                        logger.info(f"[UI] 开始匹配: 行业={industry_val}, 学历={degree_val}, 省份={province_val}, 城市={city_val}, JD={jd_val[:30]}..., 相似度={similarity_val}, top_k={topk_val}, 权重={technical_skills_w},{experience_w},{projects_w},{academic_background_w},{bonus_items_w}")
                         t0 = time.time()
                         # 1. 解析JD
                         try:
@@ -168,17 +174,31 @@ def build_ui():
                         except Exception as e:
                             logger.error(f"JD解析失败: {e}")
                             return "JD解析失败，请检查输入。"
-                        # 2. 向量化JD
+                        # 2. 向量化JD各维度
                         try:
-                            jd_emb = get_embedding_from_llm(jd_val)
+                            fields = ["technical_skills", "experience", "projects", "academic_background", "bonus_items"]
+                            # 这里用JD结构化的每个字段内容分别向量化
+                            query_embeddings = {}
+                            for field in fields:
+                                content = jd_struct.get(field, "")
+                                if isinstance(content, (dict, list)):
+                                    import json
+                                    content = json.dumps(content, ensure_ascii=False)
+                                query_embeddings[field] = get_embedding_from_llm(str(content))
+                            weights = {
+                                "technical_skills": technical_skills_w,
+                                "experience": experience_w,
+                                "projects": projects_w,
+                                "academic_background": academic_background_w,
+                                "bonus_items": bonus_items_w
+                            }
                         except Exception as e:
-                            logger.error(f"JD向量化失败: {e}")
-                            return "JD向量化失败，请检查输入。"
+                            logger.error(f"JD多维向量化失败: {e}")
+                            return "JD多维向量化失败，请检查输入。"
                         # 3. 构造where条件
                         where = {}
                         if industry_val and industry_val != "全部":
                             where["行业"] = industry_val
-                        # 学历多值映射
                         if degree_val and degree_val != "全部":
                             if degree_val == "本科及以上":
                                 where["学历"] = {"$in": ["本科", "硕士", "博士"]}
@@ -186,46 +206,51 @@ def build_ui():
                                 where["学历"] = {"$in": ["硕士", "博士"]}
                             else:
                                 where["学历"] = degree_val
-                        # 城市条件过滤
                         if city_val and city_val != "全部" and city_val != "请选择城市":
                             where["位置"] = city_val
                         logger.info(f"[检索] where条件: {where}")
                         # 4. 检索
                         try:
-                            if where:
-                                result = query_candidates(jd_emb, n_results=topk_val, where=where, similarity_threshold=similarity_val)
-                            else:
-                                result = query_candidates(jd_emb, n_results=topk_val, similarity_threshold=similarity_val)
+                            result = multi_vector_query(query_embeddings, fields, n_results=topk_val, overall_threshold=similarity_val, weights=weights, where=where)
                         except Exception as e:
                             logger.error(f"候选人检索失败: {e}")
                             return "候选人检索失败，请检查后端服务。"
-                        metadatas = result.get('metadatas', [[]])[0]
-                        distances = result.get('distances', [[]])[0]
-                        logger.info(f"[检索] 返回候选人数: {len(metadatas)}")
+                        logger.info(f"[检索] 返回候选人数: {len(result)}")
                         # 5. 格式化为HTML表格，部分列nowrap
-                        headers = ["姓名", "行业", "类别", "在职公司", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱", "相似度"]
-                        nowrap_cols = {"姓名", "行业", "位置", "手机号", "邮箱", "学历", "相似度"}
+                        headers = ["姓名", "行业", "类别", "在职公司", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱", "加权相似度"]
+                        nowrap_cols = {"姓名", "行业", "位置", "手机号", "邮箱", "学历", "加权相似度"}
                         html = "<div style='overflow-x:auto;'><table border='1' style='border-collapse:collapse;width:100%;'>"
                         html += "<thead><tr>" + "".join(f"<th style='white-space:nowrap;'>{h}</th>" for h in headers) + "</tr></thead><tbody>"
-                        for meta, dist in zip(metadatas, distances):
-                            sim = 1 - dist
+                        for item in result:
+                            meta = item['metadatas'].get('technical_skills', {})
+                            # 兼容所有元数据
+                            row_meta = {}
+                            for field in ["姓名", "行业", "类别", "在职公司", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱"]:
+                                # 取五个维度的元数据中第一个非空
+                                val = ""
+                                for dim in item['metadatas'].values():
+                                    if isinstance(dim, dict) and field in dim:
+                                        val = dim[field]
+                                        break
+                                row_meta[field] = val
                             html += "<tr>"
                             for h in headers[:-1]:
-                                val = str(meta.get(h, "")).replace("\n", " ").replace("\r", " ")
+                                val = str(row_meta.get(h, "")).replace("\n", " ").replace("\r", " ")
                                 if h in nowrap_cols:
                                     html += f"<td style='white-space:nowrap;'>{val}</td>"
                                 else:
                                     html += f"<td>{val}</td>"
-                            html += f"<td style='white-space:nowrap;'>{sim:.4f}</td>"
+                            html += f"<td style='white-space:nowrap;'>{item['weighted_score']:.4f}</td>"
                             html += "</tr>"
                         html += "</tbody></table></div>"
                         t1 = time.time()
-                        html += f"<div style='margin-top:8px;color:#888;'>本次筛选耗时 {t1-t0:.2f} 秒，共 {len(metadatas)} 人</div>"
+                        html += f"<div style='margin-top:8px;color:#888;'>本次筛选耗时 {t1-t0:.2f} 秒，共 {len(result)} 人</div>"
                         return html
 
                     match_btn.click(
                         do_match,
-                        inputs=[industry, degree, province, city, jd_text, similarity, top_k],
+                        inputs=[industry, degree, province, city, jd_text, similarity, top_k,
+                                technical_skills_weight, experience_weight, projects_weight, academic_background_weight, bonus_items_weight],
                         outputs=candidates_md
                     )
         with gr.Tab("上传简历"):

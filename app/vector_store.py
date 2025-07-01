@@ -30,6 +30,8 @@ def query_candidates(query_embedding, n_results=5, where=None, similarity_thresh
     where: dict, 可选，元数据筛选条件
     similarity_threshold: float, 可选，相似度阈值（仅余弦距离，0~1，越大越相似）
     """
+    if where is not None and len(where) == 0:
+        where = None
     result = collection.query(
         query_embeddings=[query_embedding],
         n_results=n_results,
@@ -62,6 +64,8 @@ def multi_vector_query(query_embeddings: dict, fields: list, n_results=5, overal
     where: dict, 元数据筛选条件，可选
     返回: list，每项为 {id, scores: {field: sim}, weighted_score, metadatas}
     """
+    if where is not None and len(where) == 0:
+        where = None
     # 1. 对每个字段分别检索，取足够多的候选
     field_results = {}
     candidate_ids_set = set()
