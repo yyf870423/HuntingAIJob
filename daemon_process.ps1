@@ -6,7 +6,7 @@ Usage:
 #>
 param(
     [Parameter(Position=0, Mandatory=$true)]
-    [ValidateSet('start','status','stop','help')]
+    [ValidateSet('start','status','stop','restart','help')]
     [string]$action
 )
 
@@ -17,6 +17,7 @@ function Show-Help {
     Write-Host "  .\daemon_process.ps1 start   # Start run.py as a daemon process, record PID to daemon_process.pid"
     Write-Host "  .\daemon_process.ps1 status  # Check if the process exists, return PID if running"
     Write-Host "  .\daemon_process.ps1 stop    # Stop the daemon process"
+    Write-Host "  .\daemon_process.ps1 restart # Restart the daemon process"
 }
 
 function Start-RunPy {
@@ -80,6 +81,10 @@ switch ($action) {
     'start'  { Start-RunPy }
     'status' { Status-RunPy }
     'stop'   { Stop-RunPy }
+    'restart' {
+        Stop-RunPy
+        Start-RunPy
+    }
     'help'   { Show-Help }
     default  { Show-Help }
 } 
