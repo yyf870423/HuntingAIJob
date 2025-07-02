@@ -86,6 +86,27 @@ http://127.0.0.1:7860
 ./batch_import_task.ps1 help
 ```
 
+## Windows 开机自启动说明
+
+如需在 Windows 启动时自动运行后台服务，可将 `daemon_process.ps1` 注册为开机启动项：
+
+1. **注册为当前用户的开机启动项**
+   - 以管理员身份打开 PowerShell，进入项目目录。
+   - 执行：
+     ```powershell
+     .\add_startup_daemon.ps1
+     ```
+   - 这会在注册表中添加一条记录，每次登录时自动执行 `daemon_process.ps1 start`。
+
+2. **移除开机自启动**
+   - 如需移除自启动项，执行：
+     ```powershell
+     .\remove_startup_daemon.ps1
+     ```
+
+> 项目根目录已提供 `add_startup_daemon.ps1` 和 `remove_startup_daemon.ps1` 脚本。
+> 该方法仅对当前用户生效。如需全局自启动，请修改注册表路径并以管理员身份运行。
+
 ## 主要依赖
 - gradio
 - openai / dashscope / 其他 LLM API
