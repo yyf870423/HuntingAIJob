@@ -6,5 +6,10 @@
     "姓名", "行业", "类别", "在职公司", "现岗位", "性别", "年龄", "学历", "学校", "专业", "位置", "手机号", "邮箱"
   ],
   "experience_field": "经历",
-  "unique_fields": ["姓名", "性别", "行业"]
+  "unique_fields": ["姓名", "性别", "行业"],
+  "gradio_auth": {
+    "enable": false,
+    "username": "admin",
+    "password": "123456"
+  }
 } 

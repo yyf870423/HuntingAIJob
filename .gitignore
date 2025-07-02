@@ -82,7 +82,7 @@ logs/hunting_ai_job.log
 *.tmp
 
 # Config
-config.json
+# config.json
 
 # Store
 store/chroma_db/ 
