@@ -118,5 +118,13 @@
     "start_time": 1751380305.8864799,
     "result": "导入完成，共734条",
     "end_time": 1751380605.3602548
+  },
+  "86c8a030-e615-47ea-b6e2-da87ffece3e3": {
+    "status": "finished",
+    "file": "D:\\Software\\ai_project\\HuntingAIJob\\data\\uploads\\upload-test.xlsx",
+    "cancel": false,
+    "start_time": 1751383687.7632012,
+    "result": "导入完成，共19条",
+    "end_time": 1751383724.84402
   }
 }
